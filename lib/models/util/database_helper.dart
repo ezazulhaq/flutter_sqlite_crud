@@ -43,6 +43,50 @@ class DatabaseHelper {
 
   Future<int> insertContact(Contact contact) async {
     Database db = await database;
-    return db.insert(Contact.tblContacts, contact.toMap());
+    return await db.insert(Contact.tblContacts, contact.toMap());
+  }
+
+  Future<List<Contact>> fetchContacts() async {
+    Database db = await database;
+    List<Map> contacts = await db.query(Contact.tblContacts);
+    return contacts.length == 0
+        ? []
+        : contacts.map((e) => Contact.fromMap(e)).toList();
+  }
+
+  Future<int> updateContact(Contact contact) async {
+    Database db = await database;
+    return await db.update(
+      Contact.tblContacts,
+      contact.toMap(),
+      where: "${Contact.colId}=?",
+      whereArgs: [contact.id],
+    );
+  }
+
+  Future<void> updateContactOld(int id, String name, String mobile) async {
+    Database db = await database;
+    await db.rawUpdate('''
+      update ${Contact.tblContacts} 
+      set 
+        ${Contact.colName} = $name,
+        ${Contact.colMobile} = $mobile
+      where
+        ${Contact.colId} = $id
+      ''');
+  }
+
+  Future<int> deleteContact(Contact contact) async {
+    Database db = await database;
+    return await db.delete(
+      Contact.tblContacts,
+      where: "${Contact.colId}=?",
+      whereArgs: [contact.id],
+    );
+  }
+
+  Future<void> deleteAllData() async {
+    Database db = await database;
+    await db.rawDelete("delete from ${Contact.tblContacts}");
   }
 }

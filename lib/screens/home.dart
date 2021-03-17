@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqlite_crud/components/submit_button.dart';
 import 'package:sqlite_crud/constant.dart';
 import 'package:sqlite_crud/models/contact.dart';
+import 'package:sqlite_crud/models/util/database_helper.dart';
 
 class MyHomePage extends StatefulWidget {
   MyHomePage({
@@ -18,6 +19,35 @@ class _MyHomePageState extends State<MyHomePage> {
   final _formKey = GlobalKey<FormState>();
   Contact _contact = Contact();
   List<Contact> _contacts = [];
+  final _controlName = TextEditingController();
+  final _controlMobile = TextEditingController();
+
+  DatabaseHelper _databaseHelper;
+
+  @override
+  void initState() {
+    super.initState();
+
+    setState(() {
+      _databaseHelper = DatabaseHelper.instance;
+      _databaseHelper.deleteAllData();
+      _refrestContactList();
+    });
+  }
+
+  _refrestContactList() async {
+    List<Contact> x = await _databaseHelper.fetchContacts();
+    _contacts = x;
+  }
+
+  _resetForm() {
+    setState(() {
+      _formKey.currentState.reset();
+      _controlName.clear();
+      _controlMobile.clear();
+      _contact.id = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Column(
                   children: [
                     TextFormField(
+                      controller: _controlName,
                       decoration: InputDecoration(
                         labelText: "Name",
                         hintText: "Enter Full Name",
@@ -59,6 +90,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           value.length == 0 ? "This field is Required" : null,
                     ),
                     TextFormField(
+                      controller: _controlMobile,
                       decoration: InputDecoration(
                         labelText: "Mobile No.",
                         hintText: "Enter Mobile Number",
@@ -77,20 +109,26 @@ class _MyHomePageState extends State<MyHomePage> {
                       width: double.infinity,
                       height: 50.0,
                       child: SubmitButton(
-                        press: () {
+                        press: () async {
                           var form = _formKey.currentState;
                           if (form.validate()) {
                             form.save();
-                            setState(() {
-                              _contacts.add(
-                                Contact(
-                                  id: null,
-                                  name: _contact.name,
-                                  mobile: _contact.mobile,
-                                ),
-                              );
-                            });
-                            form.reset();
+                            // setState(() {
+                            //   _contacts.add(
+                            //     Contact(
+                            //       id: null,
+                            //       name: _contact.name,
+                            //       mobile: _contact.mobile,
+                            //     ),
+                            //   );
+                            // });
+                            if (_contact.id == null)
+                              await _databaseHelper.insertContact(_contact);
+                            else
+                              await _databaseHelper.updateContact(_contact);
+
+                            _refrestContactList();
+                            _resetForm();
                           }
                         },
                         text: "Submit",
@@ -124,10 +162,22 @@ class _MyHomePageState extends State<MyHomePage> {
                           subtitle: Text(
                             _contacts[index].mobile,
                           ),
-                          trailing: GestureDetector(
-                            onTap: () {},
-                            child: Icon(Icons.more_vert_sharp),
+                          trailing: IconButton(
+                            icon: Icon(Icons.delete_sweep),
+                            onPressed: () async {
+                              await _databaseHelper
+                                  .deleteContact(_contacts[index]);
+                              _resetForm();
+                              _refrestContactList();
+                            },
                           ),
+                          onTap: () {
+                            setState(() {
+                              _contact = _contacts[index];
+                              _controlName.text = _contacts[index].name;
+                              _controlMobile.text = _contacts[index].mobile;
+                            });
+                          },
                         ),
                         Divider(
                           height: 5.0,
